@@ -1,0 +1,13 @@
+[project]
+name = "telcocustomerchurn"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "imbalanced-learn>=0.14.2",
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.1",
+    "pandas>=3.0.3",
+    "pandas-stubs~=3.0.3",
+    "scikit-learn>=1.9.0",
+    "statsmodels>=0.14.6",
+]
