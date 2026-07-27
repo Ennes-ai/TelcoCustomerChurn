@@ -1,10 +1,15 @@
 import pandas as pd
+from narwhals import DataFrame
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix, classification_report
 from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline
 import statsmodels.api as sm
+
+import prepare
+from prepare import Prepare
 """
 HEDEF
 "Bir müşterinin özelliklerine bakarak, 
@@ -15,28 +20,39 @@ def Create_a_Model(DataFrame : pd.DataFrame):
     X = DataFrame.drop("Ayrildi_Mi", axis = 1)
     y = DataFrame["Ayrildi_Mi"]
 
-    # OLS TABLOSU
-    X_ols = sm.add_constant(X.astype(float))
-    model = sm.OLS(y, X_ols).fit()
-    print(model.summary())
-
     train_X, test_X, train_y, test_y = train_test_split(X, y, test_size= 0.2 , random_state = 42)
 
-    scaler = StandardScaler()
-    Scaled_X_Train = scaler.fit_transform(train_X) # !Traine özel fit_transform uyguluyoruz.
-    Scaled_X_Test = scaler.transform(test_X)
+    # OLS TABLOSU
+    X_ols = sm.add_constant(train_X.astype(float))
+    model = sm.OLS(train_y, X_ols).fit()
+    print(model.summary())
 
-    smote = SMOTE(random_state = 42) # 1 sınıfı azınlıktı model tam öğrenemiyordu bizde 1 sınıfı için sentetik veri üretiyoruz
-    Smote_Scaled_X_Train , Smote_Train_y = smote.fit_resample(Scaled_X_Train , train_y) # sadece train için
 
-    log_reg = LogisticRegression(max_iter= 1000 , class_weight= 'balanced')
-    log_reg.fit(Smote_Scaled_X_Train, Smote_Train_y)
+    pipeline = Pipeline([
+        ("Scaler", StandardScaler()),
+        ("Smote", SMOTE(random_state=42)),
+        ("log_reg", LogisticRegression(max_iter=1000)),
+    ])
 
-    prediction = log_reg.predict(Scaled_X_Test)
+
+    pipeline.fit(train_X, train_y)
+
+    prediction = pipeline.predict(test_X)
+    #scaler = StandardScaler()
+    #Scaled_X_Train = scaler.fit_transform(train_X) # !Traine özel fit_transform uyguluyoruz.
+    #Scaled_X_Test = scaler.transform(test_X)
+
+    #smote = SMOTE(random_state = 42) # 1 sınıfı azınlıktı model tam öğrenemiyordu bizde 1 sınıfı için sentetik veri üretiyoruz
+    #Smote_Scaled_X_Train , Smote_Train_y = smote.fit_resample(Scaled_X_Train , train_y) # sadece train için
+
+    #log_reg = LogisticRegression(max_iter= 1000)
+    #log_reg.fit(Smote_Scaled_X_Train, Smote_Train_y)
+
+    #prediction = log_reg.predict(Scaled_X_Test)
 
     katsayılar = pd.DataFrame({
         'Özellik' : X.columns,
-        'Katsayi' : log_reg.coef_[0]
+        'Katsayi' : pipeline.named_steps["log_reg"].coef_[0]
     }).sort_values('Katsayi',ascending=False)
 
     print("-" * 80)
@@ -164,6 +180,73 @@ def main(DataCSV : str):
 
     Create_a_Model(DataFrame)
 
+def pipeline_method():
+
+    raw_data = pd.read_csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
+    prepare.validate_raw_data(raw_data)
+
+
+    #Target ve Feature ayrımı
+    X_raw = raw_data.drop("Churn", axis=1)
+    y_raw = raw_data["Churn"].map({"Yes": 1, "No": 0})
+
+
+
+    train_X, test_X, train_y, test_y = train_test_split(
+        X_raw, y_raw, test_size=0.2, random_state=42
+    )
+
+
+    #  OLS Tablosu
+    # -------------------------------------------------------------------------
+    cleaner = Prepare()
+    X_train_cleaned = cleaner.transform(train_X)
+
+    X_ols = sm.add_constant(X_train_cleaned.astype(float))
+    ols_model = sm.OLS(train_y, X_ols).fit()
+    print("OLS REGRESSION RESULTS")
+    print(ols_model.summary())
+
+
+    #   PIPELINE KURULUMU
+    pipeline = Pipeline([
+        ("cleaner", Prepare()),  #  Veri Temizleme & One-Hot Encoding
+        ("scaler", StandardScaler()),  #  Ölçeklendirme
+        ("smote", SMOTE(random_state=42)),  # Sentetik Çoğaltma
+        ("log_reg", LogisticRegression(max_iter=1000)),  # Model
+    ])
+
+
+    pipeline.fit(train_X, train_y)
+
+
+    prediction = pipeline.predict(test_X)
+
+
+    feature_names = cleaner.transform(train_X).columns
+    coefficients = pipeline.named_steps["log_reg"].coef_[0]
+
+    katsayılar = pd.DataFrame({
+        "Özellik": feature_names,
+        "Katsayi": coefficients,
+    }).sort_values("Katsayi", ascending=False)
+
+
+    print("-" * 80)
+    print(f"TAHMİN \n{prediction}")
+    print("-" * 80)
+    print(f"Confusion Matrix ★ \n {confusion_matrix(test_y, prediction)}")
+    print("-" * 80)
+    print(
+        f"Classification Report 🪽 \n {classification_report(test_y, prediction)}"
+    )
+    print("-" * 80)
+    print(f"Katsayılar \n{katsayılar}")
 
 if __name__ == '__main__':
-    main(DataCSV ="WA_Fn-UseC_-Telco-Customer-Churn.csv")
+    answer = input("Hangi yöntem ile yapılsın 1 or 2, 1 pipeline yöntemi 2 klasik yöntem")
+    if answer == "1":
+       pipeline_method()
+
+    elif answer == "2":
+        main(DataCSV ="WA_Fn-UseC_-Telco-Customer-Churn.csv")
