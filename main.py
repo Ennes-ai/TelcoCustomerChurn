@@ -1,5 +1,4 @@
 import pandas as pd
-from narwhals import DataFrame
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -7,6 +6,8 @@ from sklearn.metrics import confusion_matrix, classification_report
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 import statsmodels.api as sm
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import prepare
 from prepare import Prepare
@@ -15,6 +16,86 @@ HEDEF
 "Bir müşterinin özelliklerine bakarak, 
 o müşterinin gelecekte şirketten ayrılıp ayrılmayacağını tahmin eden bir model kurmak."
 """
+
+"""
+Bu dosyada aynı problem iki farklı yaklaşımla çözülmüştür:
+1) main() + Create_a_Model(): Klasik, script-tabanlı veri işleme
+2) pipeline_method(): scikit-learn Pipeline + Prepare transformer ile üretime yakın yapı
+Kullanıcı program başlatıldığında hangisini çalıştırmak istediğini seçer.
+"""
+
+def compare_approaches(train_X, train_y, test_X, test_y):
+    sonuclar = []
+
+    # Varsayılan
+    model_varsayilan = Pipeline([
+        ("Scaler", StandardScaler()),
+        ("log_reg", LogisticRegression(max_iter=1000)),
+    ])
+    model_varsayilan.fit(train_X, train_y)
+    pred_varsayilan = model_varsayilan.predict(test_X)
+    rapor_varsayilan = classification_report(test_y, pred_varsayilan, output_dict=True)
+
+    #class_weight='balanced'
+    model_balanced = Pipeline([
+        ("Scaler", StandardScaler()),
+        ("log_reg", LogisticRegression(max_iter=1000, class_weight="balanced")),
+    ])
+    model_balanced.fit(train_X, train_y)
+    pred_balanced = model_balanced.predict(test_X)
+    rapor_balanced = classification_report(test_y, pred_balanced, output_dict=True)
+
+    # SMOTE
+    model_smote = Pipeline([
+        ("Scaler", StandardScaler()),
+        ("Smote", SMOTE(random_state=42)),
+        ("log_reg", LogisticRegression(max_iter=1000)),
+    ])
+    model_smote.fit(train_X, train_y)
+    pred_smote = model_smote.predict(test_X)
+    rapor_smote = classification_report(test_y, pred_smote, output_dict=True)
+
+
+    for isim, rapor in [
+        ("Varsayılan", rapor_varsayilan),
+        ("class_weight='balanced'", rapor_balanced),
+        ("SMOTE", rapor_smote),
+    ]:
+        sonuclar.append({
+            "Yaklaşım": isim,
+            "Recall": round(rapor["1"]["recall"], 2),
+            "Precision": round(rapor["1"]["precision"], 2),
+            "Accuracy": round(rapor["accuracy"], 2),
+        })
+    print(f"SONUCLAR \n{sonuclar}")
+    return pd.DataFrame(sonuclar)
+
+
+def visualize_result(confusion_matrix , Katsayilar : pd.DataFrame , Compare_model : pd.DataFrame):
+    sns.heatmap(data = confusion_matrix , annot=True , cmap= "YlOrRd" , fmt= 'd' ,annot_kws={"size": 14, "weight": "bold"})
+    plt.show()
+
+    Katsayilar.set_index(["Özellik"]).sort_values(by = "Katsayi").plot(kind="barh" ,
+                                                                       figsize=(15,12),
+                                                                       xlabel="Katsayi",
+                                                                       ylabel="Değer",
+                                                                       title= "Modele etki eden değerler",
+                                                                       fontsize=24,
+                                                                       style= "bold"
+                                                                       )
+    plt.tight_layout() # kenarları otomatik ayarlıyor
+    plt.show()
+    # Not: Bu değerler önceden ayrı ayrı çalıştırılan 3 deneyin (Varsayılan, class_weight, SMOTE)
+    # classification_report çıktılarından elle derlenmiştir, bu fonksiyon içinde dinamik hesaplanmaz.
+    Compare_model.set_index("Yaklaşım").plot(kind="bar",
+                                             figsize=(10, 6),
+                                             rot=0,
+                                             title= "Dağınık veri seti için karşılaştırma: SMOTE vs BALANCED",
+                                             ylabel= "Değer",
+                                             )
+    plt.tight_layout()
+    plt.show()
+
 
 def Create_a_Model(DataFrame : pd.DataFrame):
     X = DataFrame.drop("Ayrildi_Mi", axis = 1)
@@ -38,6 +119,7 @@ def Create_a_Model(DataFrame : pd.DataFrame):
     pipeline.fit(train_X, train_y)
 
     prediction = pipeline.predict(test_X)
+
     #scaler = StandardScaler()
     #Scaled_X_Train = scaler.fit_transform(train_X) # !Traine özel fit_transform uyguluyoruz.
     #Scaled_X_Test = scaler.transform(test_X)
@@ -55,10 +137,19 @@ def Create_a_Model(DataFrame : pd.DataFrame):
         'Katsayi' : pipeline.named_steps["log_reg"].coef_[0]
     }).sort_values('Katsayi',ascending=False)
 
+    Compare_model = compare_approaches(train_X= train_X,
+                                       test_X= test_X,
+                                       train_y=train_y,
+                                       test_y=test_y)
+    confusion_matriks = confusion_matrix(test_y, prediction)
+    visualize_result(confusion_matrix = confusion_matriks ,
+                     Katsayilar= katsayılar ,
+                     Compare_model= Compare_model)
+
     print("-" * 80)
     print(f"TAHMİN \n{prediction}")
     print("-" * 80)
-    print(f"Confusion Matrix ★ \n {confusion_matrix(test_y, prediction)}")
+    print(f"Confusion Matrix ★ \n {confusion_matriks}")
     print("-" * 80)
     print(f"Classification Report 🪽 \n {classification_report(test_y, prediction)}")
     print("-" * 80)
@@ -93,12 +184,16 @@ def rename_colums(DataFrame):
 
 def main(DataCSV : str):
     Data = pd.read_csv(DataCSV)
+
     DataFrame = pd.DataFrame(Data)
     DataFrame = rename_colums(DataFrame) # sütün isimlerini türkçeleştiriyoruz
+
     sorunlu = pd.to_numeric(DataFrame['Toplam_Ucret'], errors='coerce')
     DataFrame['Toplam_Ucret'] = sorunlu
     DataFrame['Toplam_Ucret'] = DataFrame['Toplam_Ucret'].fillna(0)
+
     DataFrame = DataFrame.drop('Musteri_ID' , axis = 1) # ID tahmin için gereksiz olduğundan dolayı atıyoruz
+
     Yes_NO = ['Ayrildi_Mi',
               'Esi_Var_Mi',
               'Bakmakla_Yukumlu_Kisi_Var_Mi',
@@ -231,6 +326,16 @@ def pipeline_method():
         "Katsayi": coefficients,
     }).sort_values("Katsayi", ascending=False)
 
+
+
+    X_test_cleaned = cleaner.transform(test_X)
+
+    Compare_model = compare_approaches(train_X=X_train_cleaned, train_y=train_y, test_X=X_test_cleaned, test_y=test_y)
+
+    visualize_result(confusion_matrix=confusion_matrix(test_y, prediction),
+                     Katsayilar=katsayılar,
+                     Compare_model=Compare_model,
+                     )
 
     print("-" * 80)
     print(f"TAHMİN \n{prediction}")

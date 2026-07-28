@@ -2,6 +2,10 @@
 
 Bir telekom şirketinin müşteri verilerini kullanarak, hangi müşterilerin şirketten
 ayrılma (churn) riski taşıdığını tahmin eden bir sınıflandırma modeli.
+model hem klasik yöntem hemde pipeline methodu ile çalışıyor bunun sebebi ikisinide
+karşılaştırmak projeyi başlattıkdan sonra 1 derseniz pipeline methoduyla 
+2 derseniz eğer klasik yöntem ile çalışacaktır, pipeline methodunda çalışması için
+**Scikit-Learn** kütüphanesine uygun transformer sınıfı yazıldı.
 
 ## Problem Tanımı
 
@@ -87,7 +91,6 @@ etmeyen, yanıltıcı bir sınav olurdu.
   aylık (month-to-month) sözleşme, kağıtsız fatura, elektronik çek ile ödeme.
 - **En güçlü koruyucu faktörler (negatif katsayılar):** Uzun müşterilik süresi,
   1-2 yıllık sözleşme, teknik destek/online güvenlik hizmeti alıyor olmak.
-
 ## Kullanılan Araçlar
 
 Python, pandas, NumPy, scikit-learn (LogisticRegression, StandardScaler,
