@@ -5,7 +5,7 @@ ayrılma (churn) riski taşıdığını tahmin eden bir sınıflandırma modeli.
 model hem klasik yöntem hemde pipeline methodu ile çalışıyor bunun sebebi ikisinide
 karşılaştırmak projeyi başlattıkdan sonra 1 derseniz pipeline methoduyla 
 2 derseniz eğer klasik yöntem ile çalışacaktır, pipeline methodunda çalışması için
-**Scikit-Learn** kütüphanesine uygun transformer sınıfı yazıldı.
+**Scikit-Learn** kütüphanesine uygun transformer sınıfı yazıldı prepare.py, unit test eklendi TestPrepareClass.py.
 
 ## Problem Tanımı
 
