@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-import prepare
+import src.prepare as prepare
 
 
 class MyTestCase(unittest.TestCase):

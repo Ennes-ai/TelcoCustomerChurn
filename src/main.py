@@ -9,8 +9,11 @@ import statsmodels.api as sm
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import prepare
+import prepare as prepare
 from prepare import Prepare
+
+from pathlib import Path
+
 """
 HEDEF
 "Bir müşterinin özelliklerine bakarak, 
@@ -275,9 +278,9 @@ def main(DataCSV : str):
 
     Create_a_Model(DataFrame)
 
-def pipeline_method():
+def pipeline_method(path):
 
-    raw_data = pd.read_csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
+    raw_data = pd.read_csv(path)
     prepare.validate_raw_data(raw_data)
 
 
@@ -350,8 +353,11 @@ def pipeline_method():
 
 if __name__ == '__main__':
     answer = input("Hangi yöntem ile yapılsın 1 or 2, 1 pipeline yöntemi 2 klasik yöntem")
+    BASE_DIR = Path(__file__).resolve().parent
+    DATA_PATH = BASE_DIR / "data" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
+    
     if answer == "1":
-       pipeline_method()
+       pipeline_method(path = DATA_PATH)
 
     elif answer == "2":
-        main(DataCSV ="WA_Fn-UseC_-Telco-Customer-Churn.csv")
+        main(DataCSV =DATA_PATH)
