@@ -5,6 +5,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix, classification_report
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+
 import statsmodels.api as sm
 import seaborn as sns
 import matplotlib.pyplot as plt

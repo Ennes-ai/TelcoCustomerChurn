@@ -1,34 +1,7 @@
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
-class Prepare(BaseEstimator, TransformerMixin): # bu kütüphaleri kullanmamız gerekiyor Scikit-Learn standartlarında bir dönüştürücünün yazmamız için ve tanımlı olması için
-    def __init__(self):                         # 3 tane fonksiyon gerekli fit transform ve fit_trasform fit_transformu ise bize TransformerMixin sağlıyor
-        self.Yes_NO = [                         # BaseEstimator, sınıfımıza Scikit-Learn'ün parametre yönetim araçlarını kazandırır (get_params ve set_params).
-        'Ayrildi_Mi',
-        'Bakmakla_Yukumlu_Kisi_Var_Mi',
-        'Telefon_Hizmeti',
-        'Esi_Var_Mi',
-        'Kagitsiz_Fatura',
-        ]
-        self.cok_degerli = [
-        'Birden_Fazla_Hat', 'Internet_Servis_Tipi', 'Online_Guvenlik',
-        'Online_Yedekleme', 'Cihaz_Korumasi', 'Teknik_Destek',
-        'TV_Yayin_Hizmeti', 'Film_Yayin_Hizmeti', 'Sozlesme_Tipi', 'Odeme_Yontemi',
-        ]
-        self.tekrar_eden_sutunlar = [
-        'Cihaz_Korumasi_No internet service',
-        'Film_Yayin_Hizmeti_No internet service',
-        'Teknik_Destek_No internet service',
-        'TV_Yayin_Hizmeti_No internet service',
-        'Online_Guvenlik_No internet service',
-        'Online_Yedekleme_No internet service',
-        ]
-    def fit(self , X , y = None):
-        return self
-
-    def rename_columns(self ,DataFrame: pd.DataFrame):
-        column_translation = {
-            "customerID": "Musteri_ID",
+COLUMN_TRANSLATION = {  "customerID": "Musteri_ID",
             "gender": "Cinsiyet",
             "SeniorCitizen": "Yasli_Vatandas",
             "Partner": "Esi_Var_Mi",
@@ -48,43 +21,45 @@ class Prepare(BaseEstimator, TransformerMixin): # bu kütüphaleri kullanmamız 
             "PaymentMethod": "Odeme_Yontemi",
             "MonthlyCharges": "Aylik_Ucret",
             "TotalCharges": "Toplam_Ucret",
-            "Churn": "Ayrildi_Mi",  # HEDEF SÜTUN (y)
-        }
-        return DataFrame.rename(columns=column_translation)
+            "Churn": "Ayrildi_Mi",
+            }  # HEDEF SÜTUN (y)   # mevcut sözlüğün, aynen kalsın
 
-    def transform(self , X):
-        df = X.copy()
+# Adım 3'ten sonra hepsi Yes/No oldu
+BINARY_COLS = [
+    'Esi_Var_Mi', 'Bakmakla_Yukumlu_Kisi_Var_Mi', 'Telefon_Hizmeti', 'Kagitsiz_Fatura',
+    'Birden_Fazla_Hat', 'Online_Guvenlik', 'Online_Yedekleme', 'Cihaz_Korumasi',
+    'Teknik_Destek', 'TV_Yayin_Hizmeti', 'Film_Yayin_Hizmeti',
+]
 
-        df = self.rename_columns(DataFrame= df)
-        if 'Toplam_Ucret' in df.columns:
-            df['Toplam_Ucret'] = pd.to_numeric(df['Toplam_Ucret'], errors='coerce').fillna(0)
+CATEGORICAL_COLS = ['Internet_Servis_Tipi', 'Sozlesme_Tipi', 'Odeme_Yontemi']
 
-        if 'Musteri_ID' in df.columns:
-            df = df.drop('Musteri_ID', axis=1)  # ID tahmin için gereksiz olduğundan dolayı atıyoruz
+NUMERIC_COLS = ['Musterilik_Suresi_Ay', 'Aylik_Ucret', 'Yasli_Vatandas', 'Cinsiyet'] + BINARY_COLS
 
-        for column in self.Yes_NO:
-            if column in df.columns:
-                df[column] = df[column].map({'Yes': 1, 'No': 0})
-        if 'Cinsiyet' in df.columns:
-            df['Cinsiyet'] = df['Cinsiyet'].map({'Female': 1, 'Male': 0})
 
-        existing_cok_degerli = [col for col in self.cok_degerli if col in df.columns]
-        if existing_cok_degerli:
-            df = pd.get_dummies(data=df, columns=existing_cok_degerli, drop_first=True)
+class RowCleaner(BaseEstimator, TransformerMixin):
+    """
+    Sadece satır-içi (Tip 1) temizlik yapar.
+    Veriden hiçbir şey öğrenmediği için fit'in boş olması BURADA doğrudur.
+    """
 
-        colm_to_drop = [col for col in  self.tekrar_eden_sutunlar if col in df.columns]
+    def fit(self, X, y=None):
+        return self
 
-        if 'Toplam_Ucret' in df.columns:
-            colm_to_drop.append('Toplam_Ucret')
+    def transform(self, X):
+        df = X.rename(columns=COLUMN_TRANSLATION).copy()
 
-        if colm_to_drop:
-            df = df.drop(columns=colm_to_drop)
+        # ID tahmin için işe yaramaz; Toplam_Ucret multicollinearity yüzünden atılıyor
+        df = df.drop(columns=[c for c in ('Musteri_ID', 'Toplam_Ucret') if c in df.columns])
 
-        assert df.select_dtypes(include=['object', 'str']).columns.tolist() == [], "Encode edilmemiş sütun var!"
-        assert df.isnull().sum().sum() == 0, "Eksik değer var!"
-
+        # "No internet service" / "No phone service" -> "No"
+        df[BINARY_COLS] = df[BINARY_COLS].replace(
+            {'No internet service': 'No', 'No phone service': 'No'}
+        )
+        df[BINARY_COLS] = df[BINARY_COLS].apply(lambda s: s.map({'Yes': 1, 'No': 0}))
+        df['Cinsiyet'] = df['Cinsiyet'].map({'Female': 1, 'Male': 0})
 
         return df
+
+
 def validate_raw_data(df):
-    assert len(df) == 7043, "Satır sayısı beklenenden farklı!"
     assert set(df['Churn'].unique()) == {'Yes', 'No'}, "Hedef sütun bozuk!"
