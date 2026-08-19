@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler , OneHotEncoder
 from sklearn.metrics import confusion_matrix, classification_report
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
@@ -11,9 +11,8 @@ import statsmodels.api as sm
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import prepare as prepare
-from prepare import Prepare
-
+import prepare as prp
+from prepare import RowCleaner , NUMERIC_COLS , CATEGORICAL_COLS
 from pathlib import Path
 
 """
@@ -29,12 +28,18 @@ Bu dosyada aynı problem iki farklı yaklaşımla çözülmüştür:
 Kullanıcı program başlatıldığında hangisini çalıştırmak istediğini seçer.
 """
 
+preprocessor = ColumnTransformer([
+    ("num" , StandardScaler() , NUMERIC_COLS),
+    ("cat" , OneHotEncoder(drop="first",
+                           handle_unknown="ignore",
+                           sparse_output=False),CATEGORICAL_COLS)
+])
+
 def compare_approaches(train_X, train_y, test_X, test_y):
     sonuclar = []
 
     # Varsayılan
     model_varsayilan = Pipeline([
-        ("Scaler", StandardScaler()),
         ("log_reg", LogisticRegression(max_iter=1000)),
     ])
     model_varsayilan.fit(train_X, train_y)
@@ -43,7 +48,6 @@ def compare_approaches(train_X, train_y, test_X, test_y):
 
     #class_weight='balanced'
     model_balanced = Pipeline([
-        ("Scaler", StandardScaler()),
         ("log_reg", LogisticRegression(max_iter=1000, class_weight="balanced")),
     ])
     model_balanced.fit(train_X, train_y)
@@ -52,7 +56,7 @@ def compare_approaches(train_X, train_y, test_X, test_y):
 
     # SMOTE
     model_smote = Pipeline([
-        ("Scaler", StandardScaler()),
+
         ("Smote", SMOTE(random_state=42)),
         ("log_reg", LogisticRegression(max_iter=1000)),
     ])
@@ -283,7 +287,7 @@ def main(DataCSV : str):
 def pipeline_method(path):
 
     raw_data = pd.read_csv(path)
-    prepare.validate_raw_data(raw_data)
+    prp.validate_raw_data(raw_data)
 
 
     #Target ve Feature ayrımı
@@ -293,49 +297,56 @@ def pipeline_method(path):
 
 
     train_X, test_X, train_y, test_y = train_test_split(
-        X_raw, y_raw, test_size=0.2, random_state=42
+        X_raw, y_raw, test_size=0.2, random_state=42 , stratify= y_raw,
     )
 
 
-    #  OLS Tablosu
+    # * Encode
     # -------------------------------------------------------------------------
-    cleaner = Prepare()
+    cleaner = RowCleaner()
     X_train_cleaned = cleaner.transform(train_X)
-
-    X_ols = sm.add_constant(X_train_cleaned.astype(float))
-    ols_model = sm.OLS(train_y, X_ols).fit()
+    X_test_cleaned = cleaner.transform(test_X)
+    
+    X_train_encode = preprocessor.fit_transform(X_train_cleaned)
+    X_test_encode = preprocessor.transform(X_test_cleaned)
+    
+    feature_names = preprocessor.get_feature_names_out()
+    
+    #* OLS tablosu
+    X_ols_df = pd.DataFrame(X_train_encode , columns=feature_names, index = train_X.index)
+    ols_model = sm.OLS(train_y, sm.add_constant(X_ols_df)).fit()
+    
     print("OLS REGRESSION RESULTS")
     print(ols_model.summary())
 
 
     #   PIPELINE KURULUMU
     pipeline = Pipeline([
-        ("cleaner", Prepare()),  #  Veri Temizleme & One-Hot Encoding
-        ("scaler", StandardScaler()),  #  Ölçeklendirme
+        ("cleaner", RowCleaner()),  #  Veri Temizleme & One-Hot Encoding
+        ("prep", preprocessor),  #  Ölçeklendirme
         ("smote", SMOTE(random_state=42)),  # Sentetik Çoğaltma
         ("log_reg", LogisticRegression(max_iter=1000)),  # Model
     ])
 
 
     pipeline.fit(train_X, train_y)
-
-
     prediction = pipeline.predict(test_X)
 
-
-    feature_names = cleaner.transform(train_X).columns
-    coefficients = pipeline.named_steps["log_reg"].coef_[0]
-
+    assert pipeline.predict(X_raw.iloc[[0]]).shape == (1,)
+    print("✅ Tek satır tahmini çalışıyor — kabul testi geçti.")
+    
     katsayılar = pd.DataFrame({
-        "Özellik": feature_names,
-        "Katsayi": coefficients,
+        "Özellik": pipeline.named_steps["prep"].get_feature_names_out(),
+        "Katsayi": pipeline.named_steps["log_reg"].coef_[0],
     }).sort_values("Katsayi", ascending=False)
 
 
+    
 
-    X_test_cleaned = cleaner.transform(test_X)
-
-    Compare_model = compare_approaches(train_X=X_train_cleaned, train_y=train_y, test_X=X_test_cleaned, test_y=test_y)
+    Compare_model = compare_approaches(
+    train_X=X_train_encode, train_y=train_y,
+    test_X=X_test_encode,  test_y=test_y,
+)
 
     visualize_result(confusion_matrix=confusion_matrix(test_y, prediction),
                      Katsayilar=katsayılar,
