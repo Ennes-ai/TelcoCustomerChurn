@@ -68,6 +68,33 @@ def main():
     },indent=2, ensure_ascii=False),encoding="utf-8")
     
     print("✅ model/pipeline.joblib yazıldı")
+    import numpy as np
+    from sklearn.metrics import precision_score, recall_score, confusion_matrix
+
+    olasiliklar = pipe.predict_proba(test_X)[:, 1]
+
+    for esik in np.arange(0.0, 0.75, 0.05):
+        tahmin = (olasiliklar >= esik).astype(int)
+        tn, fp, fn, tp = confusion_matrix(test_y, tahmin).ravel()
+        print(f"eşik={esik:.2f}  recall={recall_score(test_y, tahmin):.2f}  "
+          f"precision={precision_score(test_y, tahmin):.2f}  FN={fn}  FP={fp}")
+
+
+    FN_MALIYET, FP_MALIYET = 500, 50   # varsayım, gerçek veri değil
+
+    for esik in np.arange(0.0, 0.75, 0.05):
+        tahmin = (olasiliklar >= esik).astype(int)
+        tn, fp, fn, tp = confusion_matrix(test_y, tahmin).ravel()
+        print(f"eşik={esik:.2f}  toplam maliyet={fn*FN_MALIYET + fp*FP_MALIYET:,} TL")
+
+    for fn_m, fp_m in [(500, 50), (500, 100), (300, 50), (1000, 50)]:
+        maliyetler = []
+    for esik in np.arange(0.05, 0.75, 0.05):
+        tahmin = (olasiliklar >= esik).astype(int)
+        tn, fp, fn, tp = confusion_matrix(test_y, tahmin).ravel()
+        maliyetler.append((fn*fn_m + fp*fp_m, esik))
+        print(f"FN={fn_m} FP={fp_m} → en iyi eşik {min(maliyetler)[1]:.2f}")
+
 
 if __name__ == "__main__":
     main()
