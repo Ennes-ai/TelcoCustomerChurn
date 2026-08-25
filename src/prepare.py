@@ -58,6 +58,10 @@ class RowCleaner(BaseEstimator, TransformerMixin):
         df[BINARY_COLS] = df[BINARY_COLS].apply(lambda s: s.map({'Yes': 1, 'No': 0}))
         df['Cinsiyet'] = df['Cinsiyet'].map({'Female': 1, 'Male': 0})
 
+
+        bozuk = df[BINARY_COLS + ['Cinsiyet']].columns[df[BINARY_COLS + ['Cinsiyet']].isna().any()].tolist()
+        if bozuk:
+            raise ValueError(f"Beklenmeyen kategori değeri: {bozuk}")
         return df
 
 

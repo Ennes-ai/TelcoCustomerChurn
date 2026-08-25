@@ -1,6 +1,7 @@
 import pandas as pd
 from prepare import RowCleaner
 from pathlib import Path
+from sklearn.preprocessing import StandardScaler , OneHotEncoder
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "data" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
     
@@ -8,13 +9,9 @@ DATA_PATH = BASE_DIR / "data" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
 raw = pd.read_csv(DATA_PATH)
 X = raw.drop("Churn", axis=1)
 
-cleaner = RowCleaner()
 
-print(cleaner.transform(X).shape)            # tüm veri
-print(cleaner.transform(X.iloc[:1]).shape)   # tek müşteri
+enc = OneHotEncoder(drop="first", handle_unknown="ignore", sparse_output=False)
+enc.fit(pd.DataFrame({"x": ["a", "b", "c"]}))
 
-
-from prepare import RowCleaner
-c = RowCleaner()
-print(c.transform(X).shape)          # (7043, 18) civarı
-print(c.transform(X.iloc[:1]).shape) # (1, 18) — AYNI olmalı
+print(enc.transform(pd.DataFrame({"x": ["a"]})))    # baz kategori
+print(enc.transform(pd.DataFrame({"x": ["z"]})))    # hiç görülmemiş

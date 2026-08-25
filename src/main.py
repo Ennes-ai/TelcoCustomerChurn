@@ -30,10 +30,10 @@ Kullanıcı program başlatıldığında hangisini çalıştırmak istediğini s
 
 preprocessor = ColumnTransformer([
     ("num" , StandardScaler() , NUMERIC_COLS),
-    ("cat" , OneHotEncoder(drop="first",
+    ("cat" , OneHotEncoder(
                            handle_unknown="ignore",
                            sparse_output=False),CATEGORICAL_COLS)
-])
+], remainder= "drop")
 
 def compare_approaches(train_X, train_y, test_X, test_y):
     sonuclar = []

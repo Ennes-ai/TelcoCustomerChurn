@@ -1,0 +1,29 @@
+{
+  "egitim_tarihi": "2026-08-26T00:07:04",
+  "sklearn": "1.9.0",
+  "n_train": 5634,
+  "recall_1": 0.767,
+  "precision_1": 0.513,
+  "girdi_sutunlari": [
+    "customerID",
+    "gender",
+    "SeniorCitizen",
+    "Partner",
+    "Dependents",
+    "tenure",
+    "PhoneService",
+    "MultipleLines",
+    "InternetService",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "Contract",
+    "PaperlessBilling",
+    "PaymentMethod",
+    "MonthlyCharges",
+    "TotalCharges"
+  ]
+}
