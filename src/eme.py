@@ -1,17 +1,21 @@
-import pandas as pd
-from prepare import RowCleaner
-from pathlib import Path
-from sklearn.preprocessing import StandardScaler , OneHotEncoder
-BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR / "data" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
-    
+# eme.py
+from pydantic import ValidationError
+from schema import Musteri
 
-raw = pd.read_csv(DATA_PATH)
-X = raw.drop("Churn", axis=1)
+ornek = Musteri.model_config["json_schema_extra"]["example"]
 
+senaryolar = [
+    ("temiz örnek",        ornek,                                    True),
+    ("geçersiz sözleşme",  {**ornek, "Contract": "Three year"},      False),
+    ("internet tutarsız",  {**ornek, "InternetService": "No"},       False),
+    ("negatif tenure",     {**ornek, "tenure": -5},                  False),
+    ("fazla alan",         {**ornek, "Bakiye": 100},                 False),
+]
 
-enc = OneHotEncoder(drop="first", handle_unknown="ignore", sparse_output=False)
-enc.fit(pd.DataFrame({"x": ["a", "b", "c"]}))
-
-print(enc.transform(pd.DataFrame({"x": ["a"]})))    # baz kategori
-print(enc.transform(pd.DataFrame({"x": ["z"]})))    # hiç görülmemiş
+for isim, veri, gecmeli in senaryolar:
+    try:
+        Musteri(**veri)
+        sonuc = True
+    except ValidationError:
+        sonuc = False
+    print(f"{'✅' if sonuc == gecmeli else '❌'} {isim}")
