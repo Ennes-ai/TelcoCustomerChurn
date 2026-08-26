@@ -10,6 +10,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from .schema import Musteri
 from fastapi import Request
+from fastapi.responses import RedirectResponse
 
 
 MODEL_DIR = Path(__file__).resolve().parent / "Model"
@@ -56,4 +57,7 @@ def predict(request :Request ,musteri : Musteri, esik:float = VARSAYILAN_ESIK):
         "esik": esik,
         "karar": "ayrilir" if olasilik >= esik else "kalir",
     }
-    
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/docs")

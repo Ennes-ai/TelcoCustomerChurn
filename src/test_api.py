@@ -1,4 +1,5 @@
 import requests
+import time
 
 musteri = {
     "gender": "Female",
@@ -31,10 +32,10 @@ sadik_musteri = {
     "InternetService": "DSL",
     "OnlineSecurity": "Yes",
     "OnlineBackup": "Yes",
-    "DeviceProtection": "Yes",
+    "DeviceProtection": "No",
     "TechSupport": "Yes",
     "StreamingTV": "No",
-    "StreamingMovies": "No",
+    "StreamingMovies": "Yes",
     "Contract": "Two year",
     "PaperlessBilling": "No",
     "PaymentMethod": "Bank transfer (automatic)",
@@ -42,16 +43,18 @@ sadik_musteri = {
 }
 
 
-path = "http://localhost:7860/predict"
+path = "https://telcocustomerchurn-87zz.onrender.com"
 
-req = requests.post(url=path,
-                  json=musteri)
-print(req.json())
 
-print(req.json()["karar"])
 
-r = requests.post(url=path,
-                  json=sadik_musteri)
-print(r.json())
 
-print(r.json()["karar"])
+def tahmin_et(veri, deneme=3):
+    for _ in range(deneme):
+        r = requests.post(f"{path}/predict", json=veri, timeout=90)
+        if r.status_code == 200:
+            return r.json()
+        time.sleep(5)
+    r.raise_for_status()
+
+print(tahmin_et(musteri))
+print(tahmin_et(sadik_musteri))
