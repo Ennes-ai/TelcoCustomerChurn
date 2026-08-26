@@ -3,6 +3,7 @@ name = "telcocustomerchurn"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.141.1",
     "imbalanced-learn>=0.14.2",
     "matplotlib>=3.11.1",
     "numpy>=2.5.1",
@@ -11,4 +12,5 @@ dependencies = [
     "scikit-learn>=1.9.0",
     "seaborn>=0.13.2",
     "statsmodels>=0.14.6",
+    "uvicorn>=0.52.4",
 ]

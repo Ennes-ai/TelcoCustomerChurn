@@ -6,10 +6,10 @@ import pandas as pd
 import sklearn
 from fastapi import FastAPI, HTTPException
 
-from schema import Musteri
+from .schema import Musteri
 
 
-MODEL_DIR = Path(__file__).resolve().parent / "model"
+MODEL_DIR = Path(__file__).resolve().parent / "Model"
 
 pipe = joblib.load(MODEL_DIR / "pipeline.joblib")
 meta = json.loads((MODEL_DIR / "meta.json").read_text(encoding="utf-8"))

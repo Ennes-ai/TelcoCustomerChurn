@@ -14,7 +14,7 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from prepare import RowCleaner, NUMERIC_COLS, CATEGORICAL_COLS, validate_raw_data
+from .prepare import RowCleaner, NUMERIC_COLS, CATEGORICAL_COLS, validate_raw_data
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "data" / "WA_Fn-UseC_-Telco-Customer-Churn.csv"
@@ -68,6 +68,7 @@ def main():
     },indent=2, ensure_ascii=False),encoding="utf-8")
     
     print("✅ model/pipeline.joblib yazıldı")
+    
     import numpy as np
     from sklearn.metrics import precision_score, recall_score, confusion_matrix
 
